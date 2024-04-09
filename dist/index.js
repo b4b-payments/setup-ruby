@@ -525,6 +525,8 @@ async function hashFile(file) {
 const GitHubHostedPlatforms = [
   'ubuntu-20.04-x64',
   'ubuntu-22.04-x64',
+  'ubuntu-20.04-arm64',
+  'ubuntu-22.04-arm64',
   'macos-11-x64',
   'macos-12-x64',
   'macos-13-x64',
@@ -64973,7 +64975,7 @@ function getAvailableVersions(platform, engine) {
   return rubyBuilderVersions[engine]
 }
 
-async function install(platform, engine, version) {
+async function install(platform, engine, version, shouldInstallWithRubyBuild) {
   let rubyPrefix, inToolCache
   if (common.shouldUseToolCache(engine, version)) {
     inToolCache = common.toolCacheFind(engine, version)
@@ -65007,7 +65009,7 @@ async function install(platform, engine, version) {
 
   if (!inToolCache) {
     await io.mkdirP(rubyPrefix)
-    if (engine === 'truffleruby+graalvm') {
+    if (engine === 'truffleruby+graalvm' || shouldInstallWithRubyBuild) {
       await installWithRubyBuild(engine, version, rubyPrefix)
     } else {
       await downloadAndExtract(platform, engine, version, rubyPrefix)
@@ -65030,7 +65032,8 @@ async function installWithRubyBuild(engine, version, rubyPrefix) {
     await exec.exec('git', ['clone', 'https://github.com/rbenv/ruby-build.git', rubyBuildDir])
   })
 
-  const rubyName = `${engine}-${version === 'head' ? 'dev' : version}`
+  const versionName = version === 'head' ? 'dev' : version
+  const rubyName = engine === 'ruby' ? versionName : `${engine}-${versionName}`
   await common.measure(`Installing ${engine}-${version} with ruby-build`, async () => {
     await exec.exec(`${rubyBuildDir}/bin/ruby-build`, [rubyName, rubyPrefix])
   })
@@ -65757,6 +65760,7 @@ const inputDefaults = {
   'cache-version': bundler.DEFAULT_CACHE_VERSION,
   'self-hosted': 'false',
   'windows-toolchain': 'default',
+  'should-install-with-ruby-build': 'false',
 }
 
 // entry point when this action is run on its own
@@ -65810,7 +65814,7 @@ async function setupRuby(options = {}) {
     await (__nccwpck_require__(3216).installJRubyTools)()
   }
 
-  const rubyPrefix = await installer.install(platform, engine, version)
+  const rubyPrefix = await installer.install(platform, engine, version, inputs['should-install-with-ruby-build'] === 'true')
 
   await common.measure('Print Ruby version', async () =>
     await exec.exec('ruby', ['--version']))

@@ -17,7 +17,7 @@ export function getAvailableVersions(platform, engine) {
   return rubyBuilderVersions[engine]
 }
 
-export async function install(platform, engine, version) {
+export async function install(platform, engine, version, shouldInstallWithRubyBuild) {
   let rubyPrefix, inToolCache
   if (common.shouldUseToolCache(engine, version)) {
     inToolCache = common.toolCacheFind(engine, version)
@@ -51,7 +51,7 @@ export async function install(platform, engine, version) {
 
   if (!inToolCache) {
     await io.mkdirP(rubyPrefix)
-    if (engine === 'truffleruby+graalvm') {
+    if (engine === 'truffleruby+graalvm' || shouldInstallWithRubyBuild) {
       await installWithRubyBuild(engine, version, rubyPrefix)
     } else {
       await downloadAndExtract(platform, engine, version, rubyPrefix)
@@ -74,7 +74,8 @@ async function installWithRubyBuild(engine, version, rubyPrefix) {
     await exec.exec('git', ['clone', 'https://github.com/rbenv/ruby-build.git', rubyBuildDir])
   })
 
-  const rubyName = `${engine}-${version === 'head' ? 'dev' : version}`
+  const versionName = version === 'head' ? 'dev' : version
+  const rubyName = engine === 'ruby' ? versionName : `${engine}-${versionName}`
   await common.measure(`Installing ${engine}-${version} with ruby-build`, async () => {
     await exec.exec(`${rubyBuildDir}/bin/ruby-build`, [rubyName, rubyPrefix])
   })

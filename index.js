@@ -18,6 +18,7 @@ const inputDefaults = {
   'cache-version': bundler.DEFAULT_CACHE_VERSION,
   'self-hosted': 'false',
   'windows-toolchain': 'default',
+  'should-install-with-ruby-build': 'false',
 }
 
 // entry point when this action is run on its own
@@ -71,7 +72,7 @@ export async function setupRuby(options = {}) {
     await require('./windows').installJRubyTools()
   }
 
-  const rubyPrefix = await installer.install(platform, engine, version)
+  const rubyPrefix = await installer.install(platform, engine, version, inputs['should-install-with-ruby-build'] === 'true')
 
   await common.measure('Print Ruby version', async () =>
     await exec.exec('ruby', ['--version']))
